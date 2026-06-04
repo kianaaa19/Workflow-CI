@@ -1,0 +1,11 @@
+name: Bank_Churn_Production_Pipeline
+
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      max_depth: {type: int, default: 5}
+      learning_rate: {type: float, default: 0.2}
+      n_estimators: {type: int, default: 100}
+    command: "python modelling.py --max_depth {max_depth} --learning_rate {learning_rate} --n_estimators {n_estimators}"
