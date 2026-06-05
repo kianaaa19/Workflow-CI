@@ -20,8 +20,6 @@ jobs:
       MLFLOW_TRACKING_URI: "https://dagshub.com/kianaaa19/SMSML_santanam.mlflow"
       MLFLOW_TRACKING_USERNAME: "kianaaa19"
       MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
-      # Trik sakral agar CLI patuh membuka backend store cloud
-      MLFLOW_ALLOW_FILE_STORE: "true"
 
     steps:
     - name: Checkout Repository
@@ -49,35 +47,21 @@ jobs:
     - name: Execute MLProject Production Training
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        
+        git checkout main || git checkout -b main
+
+        # Sesuai gambar struktur HP lu, nama foldernya langsung MLProject
         if [ -d "MLProject" ]; then cd MLProject; fi
-        
-        # Bersihkan sisa-sisa file store lokal lama
-        rm -rf mlruns/ .mlflow/ MLmodel/ 2>/dev/null
 
-        # KOREKSI UTAMA: Paksa MLflow CLI menggunakan database SQLite lokal agar sinkronisasi run tidak crash
-        mlflow run . --env-manager=local --backend-store-uri sqlite:///mlflow.db
-
-    - name: Fetch Latest Run ID via Python
-      run: |
-        python -c "
-        import mlflow
-        import os
-        mlflow.set_tracking_uri(os.environ['MLFLOW_TRACKING_URI'])
-        experiment = mlflow.get_experiment_by_name('Bank_Churn_Optimization_Santanam')
-        runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=['attributes.start_time DESC'], max_results=1)
-        latest_run_id = runs.iloc[0]['run_id']
-        with open(os.environ['GITHUB_ENV'], 'a') as f:
-            f.write(f'LATEST_RUN_ID={latest_run_id}\n')
-        print(f'[+] Sukses Mengunci Run ID Terbaru: {latest_run_id}')
-        "
+        # Jalankan MLProject secara murni menggunakan tracking cloud DagsHub
+        mlflow run . --env-manager=local
 
     - name: Build and Push Model Deployment Image
       run: |
         if [ -d "MLProject" ]; then cd MLProject; fi
 
+        # Mengemas model langsung ditarik dari server remote DagsHub milikmu
         mlflow models build-docker \
-          -m "runs:/${{ env.LATEST_RUN_ID }}/model" \
+          -m "models:/Bank_Churn_Model_Santanam/latest" \
           -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest"
 
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-abc-app:latest
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest
