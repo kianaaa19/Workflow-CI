@@ -45,15 +45,12 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Execute MLProject Production Training
-      env:
-        MLFLOW_TRACKING_URI: "https://dagshub.com/kianaaa19/SMSML_santanam.mlflow"
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         git checkout main || git checkout -b main
 
         if [ -d "MLProject" ]; then cd MLProject; fi
 
-        # Eksekusi murni alat otomatisasi MLProject sesuai regulasi kriteria 3
         mlflow run . --env-manager=local
 
     - name: Build and Push Model Deployment Image
