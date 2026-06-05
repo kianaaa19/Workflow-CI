@@ -45,15 +45,16 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Execute MLProject Production Training
+      env:
+        MLFLOW_TRACKING_URI: "https://dagshub.com/kianaaa19/SMSML_santanam.mlflow"
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         git checkout main || git checkout -b main
 
         if [ -d "MLProject" ]; then cd MLProject; fi
 
-        # JALAN KELUAR UTAMA: Suntikkan --tracking-uri secara langsung di perintah CLI
-        # Ini memaksa mlflow run murni berkomunikasi dengan REST API DagsHub tanpa menyentuh file_store lokal!
-        mlflow run . --env-manager=local --tracking-uri "$MLFLOW_TRACKING_URI"
+        # Eksekusi murni alat otomatisasi MLProject sesuai regulasi kriteria 3
+        mlflow run . --env-manager=local
 
     - name: Build and Push Model Deployment Image
       run: |
@@ -61,6 +62,6 @@ jobs:
 
         mlflow models build-docker \
           -m "models:/Bank_Churn_Model_Santanam/latest" \
-          -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest"
+          -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-abc-app:latest"
 
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-abc-app:latest
