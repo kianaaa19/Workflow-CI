@@ -49,26 +49,20 @@ jobs:
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         
-        # Masuk ke folder MLProject tempat file 'MLProject' lu berada (Sesuai Gambar HP)
         if [ -d "MLProject" ]; then cd MLProject; fi
         
-        # Bersihkan sisa-sisa run lokal lama agar tidak mengganggu jalannya automation
         rm -rf mlruns/ .mlflow/ MLmodel/ 2>/dev/null
 
-        # Jalankan MLProject dan simpan outputnya untuk menangkap RUN_ID baru
         mlflow run . --env-manager=local | tee output.log
         
-        # Ekstrak RUN_ID dari log untuk digunakan pada tahap build docker
         RUN_ID=$(grep -oE "run with ID '[0-9a-f]+'" output.log | head -n 1 | awk '{print $4}' | tr -d "'")
         echo "LATEST_RUN_ID=$RUN_ID" >> $GITHUB_ENV
-        print(f"[+] Terdeteksi Run ID Baru dari Workflow: $RUN_ID")
+        echo "[+] Terdeteksi Run ID Baru dari Workflow: $RUN_ID"
 
     - name: Build and Push Model Deployment Image
       run: |
         if [ -d "MLProject" ]; then cd MLProject; fi
 
-        # Mengemas model menggunakan RUN_ID spesifik yang baru saja diproduksi oleh pipeline di atas
-        # Ini trik rahasia agar reviewer tahu proses re-training otomatisnya berjalan nyata!
         mlflow models build-docker \
           -m "runs:/${{ env.LATEST_RUN_ID }}/model" \
           -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest"
