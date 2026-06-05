@@ -64,4 +64,4 @@ jobs:
           -m "models:/Bank_Churn_Model_Santanam/latest" \
           -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest"
 
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-abc-app:latest
