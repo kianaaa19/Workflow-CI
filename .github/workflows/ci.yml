@@ -20,6 +20,8 @@ jobs:
       MLFLOW_TRACKING_URI: "https://dagshub.com/kianaaa19/SMSML_santanam.mlflow"
       MLFLOW_TRACKING_USERNAME: "kianaaa19"
       MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+      # Trik sakral agar CLI patuh membuka backend store cloud
+      MLFLOW_ALLOW_FILE_STORE: "true"
 
     steps:
     - name: Checkout Repository
@@ -50,13 +52,13 @@ jobs:
         
         if [ -d "MLProject" ]; then cd MLProject; fi
         
+        # Bersihkan sisa-sisa file store lokal lama
         rm -rf mlruns/ .mlflow/ MLmodel/ 2>/dev/null
 
-        # Jalankan retraining
-        mlflow run . --env-manager=local
+        # KOREKSI UTAMA: Paksa MLflow CLI menggunakan database SQLite lokal agar sinkronisasi run tidak crash
+        mlflow run . --env-manager=local --backend-store-uri sqlite:///mlflow.db
 
     - name: Fetch Latest Run ID via Python
-      # Kita pakai Python murni untuk nembak API MLflow DagsHub agar dapet RUN_ID yang 100% akurat
       run: |
         python -c "
         import mlflow
@@ -74,7 +76,6 @@ jobs:
       run: |
         if [ -d "MLProject" ]; then cd MLProject; fi
 
-        # Sekarang env.LATEST_RUN_ID dijamin terisi string ID asli dari DagsHub
         mlflow models build-docker \
           -m "runs:/${{ env.LATEST_RUN_ID }}/model" \
           -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest"
