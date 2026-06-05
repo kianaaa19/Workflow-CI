@@ -45,7 +45,6 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Execute MLProject Production Training
-      id: run_training
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         
@@ -53,16 +52,29 @@ jobs:
         
         rm -rf mlruns/ .mlflow/ MLmodel/ 2>/dev/null
 
-        mlflow run . --env-manager=local | tee output.log
-        
-        RUN_ID=$(grep -oE "run with ID '[0-9a-f]+'" output.log | head -n 1 | awk '{print $4}' | tr -d "'")
-        echo "LATEST_RUN_ID=$RUN_ID" >> $GITHUB_ENV
-        echo "[+] Terdeteksi Run ID Baru dari Workflow: $RUN_ID"
+        # Jalankan retraining
+        mlflow run . --env-manager=local
+
+    - name: Fetch Latest Run ID via Python
+      # Kita pakai Python murni untuk nembak API MLflow DagsHub agar dapet RUN_ID yang 100% akurat
+      run: |
+        python -c "
+        import mlflow
+        import os
+        mlflow.set_tracking_uri(os.environ['MLFLOW_TRACKING_URI'])
+        experiment = mlflow.get_experiment_by_name('Bank_Churn_Optimization_Santanam')
+        runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=['attributes.start_time DESC'], max_results=1)
+        latest_run_id = runs.iloc[0]['run_id']
+        with open(os.environ['GITHUB_ENV'], 'a') as f:
+            f.write(f'LATEST_RUN_ID={latest_run_id}\n')
+        print(f'[+] Sukses Mengunci Run ID Terbaru: {latest_run_id}')
+        "
 
     - name: Build and Push Model Deployment Image
       run: |
         if [ -d "MLProject" ]; then cd MLProject; fi
 
+        # Sekarang env.LATEST_RUN_ID dijamin terisi string ID asli dari DagsHub
         mlflow models build-docker \
           -m "runs:/${{ env.LATEST_RUN_ID }}/model" \
           -n "${{ secrets.DOCKERHUB_USERNAME }}/mlops-churn-app:latest"
